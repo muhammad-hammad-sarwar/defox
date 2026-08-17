@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import type { CookieOptions, Response } from "express";
 import jwt from "jsonwebtoken";
 
-import { getEnv } from "../../config/env.js";
+import { getEnv, isSecureCookieOrigin } from "../../config/env.js";
 import { ApiError } from "../../lib/api-error.js";
 import { UserModel, type UserDocument } from "../../models/user.model.js";
 
@@ -17,7 +17,7 @@ function cookieOptions(): CookieOptions {
   return {
     httpOnly: true,
     sameSite: "lax",
-    secure: env.NODE_ENV === "production",
+    secure: isSecureCookieOrigin(env.WEB_APP_URL),
     path: "/",
     maxAge: env.SESSION_TTL_HOURS * 60 * 60 * 1000,
   };

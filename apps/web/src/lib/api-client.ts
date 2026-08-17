@@ -21,12 +21,12 @@ export async function apiFetch<TData>(
   init: RequestInit = {},
 ): Promise<TData> {
   const response = await fetch(path, {
+    ...init,
     credentials: "same-origin",
     headers: {
       ...(init.body ? { "content-type": "application/json" } : {}),
       ...init.headers,
     },
-    ...init,
   });
 
   let body: ApiResponse<TData> | null = null;

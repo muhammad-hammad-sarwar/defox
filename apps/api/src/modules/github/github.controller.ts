@@ -15,7 +15,7 @@ import {
   handleInstallationCallback,
 } from "./github.installation.service.js";
 import {
-  getRepositoryCloneCredentials,
+  redeemCloneGrant,
   getRepositoryForSession,
   listRepositories,
   refreshRepositories,
@@ -152,10 +152,11 @@ export async function authorizeRepository(req: Request, res: Response): Promise<
  */
 export async function issueCloneCredentials(req: Request, res: Response): Promise<void> {
   const { githubRepositoryId } = parseOrThrow(repositoryIdParamSchema, req.params);
-  // The internal caller states which application user the sandbox runs for.
-  const { userId } = parseBody(cloneCredentialsBodySchema, req);
+  // The acting user comes from the single-use grant the user themselves
+  // obtained, so the service token alone grants nothing.
+  const { grantToken } = parseBody(cloneCredentialsBodySchema, req);
 
-  sendSuccess(res, await getRepositoryCloneCredentials(userId, githubRepositoryId));
+  sendSuccess(res, await redeemCloneGrant(githubRepositoryId, grantToken));
 }
 
 /** DELETE /api/github */
