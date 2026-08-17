@@ -1,0 +1,24 @@
+{
+  "name": "defox",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run dev --workspace @defox/api",
+    "dev:web": "npm run dev --workspace @defox/web",
+    "build": "npm run build --workspace @defox/shared && npm run build --workspace @defox/api && npm run build --workspace @defox/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
