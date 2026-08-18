@@ -32,9 +32,6 @@ function isSupported(event: string): event is SupportedWebhookEvent {
 
 export async function handleWebhook(delivery: WebhookDelivery): Promise<WebhookResult> {
   const env = getEnv();
-  if (!env.GITHUB_WEBHOOK_SECRET) {
-    throw ApiError.forbidden("Webhooks are not configured");
-  }
   if (!delivery.signature) {
     throw ApiError.unauthorized("Missing webhook signature");
   }

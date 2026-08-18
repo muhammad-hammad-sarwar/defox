@@ -54,13 +54,7 @@ export function requireInternalService(
   _res: Response,
   next: NextFunction,
 ): void {
-  const env = getEnv();
-  const expected = env.INTERNAL_SERVICE_TOKEN;
-  if (!expected) {
-    next(ApiError.forbidden("Internal service access is not configured"));
-    return;
-  }
-
+  const expected = getEnv().INTERNAL_SERVICE_TOKEN;
   const provided = req.header("x-internal-service-token");
   if (!provided || !timingSafeEqualString(provided, expected)) {
     next(ApiError.unauthorized("Invalid internal service token"));

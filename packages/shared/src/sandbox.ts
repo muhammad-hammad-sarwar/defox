@@ -24,6 +24,15 @@ export interface RepositoryCloneCredentials {
   expiresAt: string;
 }
 
+/**
+ * Single-use capability the sandbox service redeems for clone credentials.
+ * It carries no GitHub credential itself and is bound to one user+repository.
+ */
+export interface RepositoryCloneGrant {
+  token: string;
+  expiresAt: string;
+}
+
 /** Result of the backend authorization check for a future coding session. */
 export interface SessionRepositoryAuthorization {
   authorized: true;
@@ -34,4 +43,5 @@ export interface SessionRepositoryAuthorization {
     private: boolean;
   };
   installationId: number;
+  cloneGrant: RepositoryCloneGrant;
 }

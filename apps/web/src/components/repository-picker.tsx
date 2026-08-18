@@ -1,7 +1,7 @@
 "use client";
 
 import type { GitHubRepositoryDto, RepositorySelection } from "@defox/shared";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiRequestError } from "@/lib/api-client";
 import { listRepositories, messageForCode, updateRepositoryAccess } from "@/lib/github";
@@ -18,6 +18,11 @@ export function RepositoryPicker({
 }) {
   const [repositories, setRepositories] = useState<GitHubRepositoryDto[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Only the user's explicit changes are submitted, so repositories on pages
+  // that were never loaded keep whatever the server already stores.
+  const pendingSelect = useRef(new Set<string>());
+  const pendingDeselect = useRef(new Set<string>());
+  const [dirty, setDirty] = useState(false);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -43,8 +48,12 @@ export function RepositoryPicker({
         setSelected((current) => {
           const next = new Set(current);
           for (const repository of result.items) {
-            if (repository.selected) next.add(repository.githubRepositoryId);
-            else next.delete(repository.githubRepositoryId);
+            const id = repository.githubRepositoryId;
+            // Unsaved local changes win over the server state.
+            if (pendingSelect.current.has(id)) next.add(id);
+            else if (pendingDeselect.current.has(id)) next.delete(id);
+            else if (repository.selected) next.add(id);
+            else next.delete(id);
           }
           return next;
         });
@@ -66,20 +75,36 @@ export function RepositoryPicker({
   }, [load]);
 
   function toggle(repositoryId: string) {
+    const enabling = !selected.has(repositoryId);
     setSelected((current) => {
       const next = new Set(current);
-      if (next.has(repositoryId)) next.delete(repositoryId);
-      else next.add(repositoryId);
+      if (enabling) next.add(repositoryId);
+      else next.delete(repositoryId);
       return next;
     });
+    if (enabling) {
+      pendingSelect.current.add(repositoryId);
+      pendingDeselect.current.delete(repositoryId);
+    } else {
+      pendingSelect.current.delete(repositoryId);
+      pendingDeselect.current.add(repositoryId);
+    }
+    setDirty(true);
   }
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      await updateRepositoryAccess({ mode: "selected", repositoryIds: [...selected] });
-      onSaved(`Saved ${selected.size} selected repositories.`);
+      const result = await updateRepositoryAccess({
+        mode: "selected",
+        select: [...pendingSelect.current],
+        deselect: [...pendingDeselect.current],
+      });
+      pendingSelect.current.clear();
+      pendingDeselect.current.clear();
+      setDirty(false);
+      onSaved(`Saved ${result.selectedRepositoryIds.length} selected repositories.`);
     } catch (cause) {
       setError(
         cause instanceof ApiRequestError
@@ -105,7 +130,10 @@ export function RepositoryPicker({
             Refresh from GitHub
           </Button>
           {mode === "selected" && (
-            <Button onClick={() => void save()} disabled={saving || loading}>
+            <Button
+              onClick={() => void save()}
+              disabled={saving || loading || !dirty}
+            >
               {saving ? "Saving…" : "Save selection"}
             </Button>
           )}

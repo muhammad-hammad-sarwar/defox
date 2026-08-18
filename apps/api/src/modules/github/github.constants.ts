@@ -46,4 +46,7 @@ export const INSTALLATION_TOKEN_REFRESH_MARGIN_SECONDS = 120;
 
 export const OAUTH_STATE_TTL_MINUTES = 10;
 
+/** Lifetime of a single-use clone grant handed to the future sandbox service. */
+export const CLONE_GRANT_TTL_MS = 5 * 60 * 1000;
+
 export const DEFAULT_POST_INSTALL_REDIRECT_PATH = "/settings/github";
