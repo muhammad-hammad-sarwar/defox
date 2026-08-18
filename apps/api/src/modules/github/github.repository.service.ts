@@ -1,3 +1,5 @@
+import { createHash, randomBytes } from "node:crypto";
+
 import type {
   GitHubRepositoryDto,
   Paginated,
@@ -10,17 +12,23 @@ import type {
 
 import { ApiError } from "../../lib/api-error.js";
 import { logger } from "../../lib/logger.js";
+import { GitHubCloneGrantModel } from "../../models/github-clone-grant.model.js";
 import type { GitHubInstallationDocument } from "../../models/github-installation.model.js";
 import {
   GitHubRepositoryModel,
   type GitHubRepositoryDocument,
 } from "../../models/github-repository.model.js";
+import { CLONE_GRANT_TTL_MS } from "./github.constants.js";
 import { requireActiveInstallation } from "./github.installation.service.js";
 import {
   fetchInstallationRepositories,
   getInstallationAccessToken,
 } from "./github.service.js";
 import type { ListRepositoriesOptions } from "./github.types.js";
+
+function hashGrantToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 export function toRepositoryDto(
   repository: GitHubRepositoryDocument,
@@ -155,22 +163,64 @@ export async function updateRepositoryAccess(
     };
   }
 
-  if (!input.repositoryIds) {
-    // Mode switch only: keep whatever the user already selected.
-    installation.repositorySelection = "selected";
-    await installation.save();
-    const current = await GitHubRepositoryModel.find({
-      userId,
-      installationId: installation.installationId,
-      selected: true,
-    }).select("githubRepositoryId");
-    return {
-      repositorySelection: "selected",
-      selectedRepositoryIds: current.map((repo) => repo.githubRepositoryId),
-    };
+  const select = input.select ? [...new Set(input.select)] : [];
+  const deselect = input.deselect ? [...new Set(input.deselect)] : [];
+  const replacement = input.repositoryIds ? [...new Set(input.repositoryIds)] : null;
+
+  await assertRepositoriesBelongToInstallation(userId, installation, [
+    ...(replacement ?? []),
+    ...select,
+    ...deselect,
+  ]);
+
+  installation.repositorySelection = "selected";
+  await installation.save();
+
+  const scope = { userId, installationId: installation.installationId };
+
+  if (replacement) {
+    // Full replacement: the caller states the complete selection.
+    await GitHubRepositoryModel.updateMany(scope, { $set: { selected: false } });
+    if (replacement.length > 0) {
+      await GitHubRepositoryModel.updateMany(
+        { ...scope, githubRepositoryId: { $in: replacement } },
+        { $set: { selected: true } },
+      );
+    }
+  } else {
+    // Delta update: repositories the caller never loaded keep their state.
+    if (deselect.length > 0) {
+      await GitHubRepositoryModel.updateMany(
+        { ...scope, githubRepositoryId: { $in: deselect } },
+        { $set: { selected: false } },
+      );
+    }
+    if (select.length > 0) {
+      await GitHubRepositoryModel.updateMany(
+        { ...scope, githubRepositoryId: { $in: select } },
+        { $set: { selected: true } },
+      );
+    }
   }
 
-  const requested = [...new Set(input.repositoryIds)];
+  const current = await GitHubRepositoryModel.find({ ...scope, selected: true }).select(
+    "githubRepositoryId",
+  );
+  return {
+    repositorySelection: "selected",
+    selectedRepositoryIds: current.map((repo) => repo.githubRepositoryId),
+  };
+}
+
+/** Rejects any repository id that is not granted to the user's installation. */
+async function assertRepositoriesBelongToInstallation(
+  userId: string,
+  installation: GitHubInstallationDocument,
+  repositoryIds: string[],
+): Promise<void> {
+  const requested = [...new Set(repositoryIds)];
+  if (requested.length === 0) return;
+
   const owned = await GitHubRepositoryModel.find({
     userId,
     installationId: installation.installationId,
@@ -186,26 +236,6 @@ export async function updateRepositoryAccess(
       { unknownRepositoryIds: requested.filter((id) => !ownedIds.has(id)) },
     );
   }
-
-  installation.repositorySelection = "selected";
-  await installation.save();
-
-  await GitHubRepositoryModel.updateMany(
-    { userId, installationId: installation.installationId },
-    { $set: { selected: false } },
-  );
-  if (requested.length > 0) {
-    await GitHubRepositoryModel.updateMany(
-      {
-        userId,
-        installationId: installation.installationId,
-        githubRepositoryId: { $in: requested },
-      },
-      { $set: { selected: true } },
-    );
-  }
-
-  return { repositorySelection: "selected", selectedRepositoryIds: requested };
 }
 
 export async function getRepositorySelection(userId: string): Promise<RepositorySelection> {
@@ -261,6 +291,16 @@ export async function getRepositoryForSession(
     githubRepositoryId,
   );
 
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + CLONE_GRANT_TTL_MS);
+  await GitHubCloneGrantModel.create({
+    userId: repository.userId,
+    githubRepositoryId: repository.githubRepositoryId,
+    installationId: installation.installationId,
+    tokenHash: hashGrantToken(token),
+    expiresAt,
+  });
+
   return {
     authorized: true,
     repository: {
@@ -270,7 +310,38 @@ export async function getRepositoryForSession(
       private: repository.private,
     },
     installationId: installation.installationId,
+    cloneGrant: { token, expiresAt: expiresAt.toISOString() },
   };
+}
+
+/**
+ * Redeems a single-use grant issued by `getRepositoryForSession`. The acting
+ * user comes from the grant, never from the caller, so the internal service
+ * token cannot be used to reach another tenant's repository.
+ */
+export async function redeemCloneGrant(
+  githubRepositoryId: string,
+  grantToken: string,
+): Promise<RepositoryCloneCredentials> {
+  const grant = await GitHubCloneGrantModel.findOneAndUpdate(
+    {
+      tokenHash: hashGrantToken(grantToken),
+      githubRepositoryId,
+      consumedAt: null,
+      expiresAt: { $gt: new Date() },
+    },
+    { $set: { consumedAt: new Date() } },
+  );
+
+  if (!grant) {
+    throw new ApiError(
+      403,
+      "GITHUB_UNAUTHORIZED_REPOSITORY",
+      "Clone grant is invalid, expired, or already used",
+    );
+  }
+
+  return getRepositoryCloneCredentials(grant.userId.toString(), githubRepositoryId);
 }
 
 /**

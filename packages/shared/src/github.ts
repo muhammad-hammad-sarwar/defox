@@ -61,8 +61,15 @@ export interface UpdateRepositoryAccessAllRequest {
 
 export interface UpdateRepositoryAccessSelectedRequest {
   mode: "selected";
-  /** Omit to switch mode while keeping the current per-repository choices. */
+  /** Full replacement of the selection. Omit to keep the current choices. */
   repositoryIds?: string[];
+  /**
+   * Incremental changes, so a paginated picker never has to submit (and thus
+   * never accidentally clears) repositories it did not load.
+   * Cannot be combined with `repositoryIds`.
+   */
+  select?: string[];
+  deselect?: string[];
 }
 
 export type UpdateRepositoryAccessRequest =

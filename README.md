@@ -64,10 +64,10 @@ Browser → Next.js (/api proxy) → Express → GitHub App
 | GET | `/api/github/callback` | Validates state, persists installation, syncs repositories |
 | GET | `/api/github/repositories` | Paginated repositories (`page`, `perPage`, `search`, `selectedOnly`, `refresh`) |
 | POST | `/api/github/repositories/sync` | Re-sync repository metadata from GitHub |
-| PATCH | `/api/github/repositories/access` | `{ "mode": "all" }` or `{ "mode": "selected", "repositoryIds": [...] }` |
-| POST | `/api/github/repositories/authorize` | `{ "repositoryId": "123" }` → backend authorization for a future session |
+| PATCH | `/api/github/repositories/access` | `{ "mode": "all" }`, `{ "mode": "selected", "repositoryIds": [...] }` (full replacement), or `{ "mode": "selected", "select": [...], "deselect": [...] }` (deltas) |
+| POST | `/api/github/repositories/authorize` | `{ "repositoryId": "123" }` → authorization plus a single-use clone grant |
 | POST | `/api/github/webhooks` | Signature-verified webhook receiver (metadata only) |
-| POST | `/api/internal/github/repositories/:id/clone-credentials` | Service-token guarded; short-lived clone credentials for the future sandbox |
+| POST | `/api/internal/github/repositories/:id/clone-credentials` | Service-token guarded; redeems `{ "grantToken": "…" }` for short-lived clone credentials |
 
 All responses use `{ "ok": true, "data": ... }` or `{ "ok": false, "error": { "code", "message" } }`.
 
@@ -81,6 +81,11 @@ Two distinct concepts are tracked separately:
 Authorization for any repository operation runs:
 authenticated user → installation ownership → repository belongs to installation →
 repository allowed by selection policy.
+
+The sandbox boundary never names an application user: `/authorize` returns a
+single-use, 5-minute `cloneGrant` bound to that user and repository, and the
+internal endpoint redeems it (in addition to the service token), so a leaked
+service token cannot mint credentials for another tenant.
 
 ## Not implemented yet
 

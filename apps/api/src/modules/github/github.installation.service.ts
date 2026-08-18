@@ -5,6 +5,7 @@ import type { GitHubAccountDto, GitHubConnectionDto } from "@defox/shared";
 import { getEnv } from "../../config/env.js";
 import { ApiError } from "../../lib/api-error.js";
 import { logger } from "../../lib/logger.js";
+import { GitHubCloneGrantModel } from "../../models/github-clone-grant.model.js";
 import {
   GitHubInstallationModel,
   type GitHubInstallationDocument,
@@ -215,6 +216,10 @@ export async function disconnectInstallation(userId: string): Promise<void> {
   const installation = await requireActiveInstallation(userId);
 
   await GitHubRepositoryModel.deleteMany({
+    userId,
+    installationId: installation.installationId,
+  });
+  await GitHubCloneGrantModel.deleteMany({
     userId,
     installationId: installation.installationId,
   });

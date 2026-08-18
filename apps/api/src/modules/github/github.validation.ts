@@ -34,13 +34,30 @@ const githubRepositoryIdSchema = z
   .string()
   .regex(/^\d+$/, "repository ids are numeric GitHub ids");
 
-export const updateRepositoryAccessSchema = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("all") }),
-  z.object({
-    mode: z.literal("selected"),
-    repositoryIds: z.array(githubRepositoryIdSchema).max(1000).optional(),
-  }),
-]);
+const repositoryIdListSchema = z.array(githubRepositoryIdSchema).max(1000);
+
+export const updateRepositoryAccessSchema = z
+  .discriminatedUnion("mode", [
+    z.object({ mode: z.literal("all") }),
+    z.object({
+      mode: z.literal("selected"),
+      /** Full replacement of the selection. */
+      repositoryIds: repositoryIdListSchema.optional(),
+      /** Incremental changes; cannot be combined with repositoryIds. */
+      select: repositoryIdListSchema.optional(),
+      deselect: repositoryIdListSchema.optional(),
+    }),
+  ])
+  .refine(
+    (input) =>
+      input.mode === "all" || !(input.repositoryIds && (input.select || input.deselect)),
+    "repositoryIds cannot be combined with select/deselect",
+  )
+  .refine(
+    (input) =>
+      input.mode === "all" || !input.select?.some((id) => input.deselect?.includes(id)),
+    "a repository cannot be both selected and deselected",
+  );
 
 export const repositoryIdParamSchema = z.object({
   githubRepositoryId: githubRepositoryIdSchema,
@@ -50,9 +67,12 @@ export const sessionRepositorySchema = z.object({
   repositoryId: githubRepositoryIdSchema,
 });
 
-/** Body of the internal clone-credentials endpoint (agent/sandbox service). */
+/**
+ * Body of the internal clone-credentials endpoint (agent/sandbox service).
+ * The acting user is derived from the grant, never named by the caller.
+ */
 export const cloneCredentialsBodySchema = z.object({
-  userId: z.string().regex(/^[a-f0-9]{24}$/, "userId must be an application user id"),
+  grantToken: z.string().regex(/^[a-f0-9]{64}$/, "grantToken is malformed"),
 });
 
 export type ListRepositoriesQuery = z.infer<typeof listRepositoriesQuerySchema>;
