@@ -5,7 +5,11 @@ import { ApiError } from "../../lib/api-error.js";
 import { sendSuccess } from "../../lib/http.js";
 import { logger } from "../../lib/logger.js";
 import { getAuthenticatedUser } from "../../middleware/auth.js";
-import { parseBody, parseOrThrow, parseQuery } from "../../middleware/validate.js";
+import {
+  parseBody,
+  parseOrThrow,
+  parseQuery,
+} from "../../middleware/validate.js";
 import { DEFAULT_POST_INSTALL_REDIRECT_PATH } from "./github.constants.js";
 import {
   consumeInstallationState,
@@ -33,13 +37,19 @@ import {
 import { handleWebhook } from "./github.webhook.service.js";
 
 /** GET /api/github */
-export async function getGitHubConnection(req: Request, res: Response): Promise<void> {
+export async function getGitHubConnection(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const user = getAuthenticatedUser(req);
   sendSuccess(res, await getConnection(user.id as string));
 }
 
 /** GET /api/github/install */
-export async function startInstallation(req: Request, res: Response): Promise<void> {
+export async function startInstallation(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const user = getAuthenticatedUser(req);
   const { redirect } = parseQuery(installQuerySchema, req);
   const url = await createInstallationUrl(
@@ -49,7 +59,10 @@ export async function startInstallation(req: Request, res: Response): Promise<vo
   res.redirect(url);
 }
 
-function buildWebRedirect(path: string, params: Record<string, string>): string {
+function buildWebRedirect(
+  path: string,
+  params: Record<string, string>,
+): string {
   const env = getEnv();
   const url = new URL(path, env.WEB_APP_URL);
   for (const [key, value] of Object.entries(params)) {
@@ -59,7 +72,10 @@ function buildWebRedirect(path: string, params: Record<string, string>): string 
 }
 
 /** GET /api/github/callback */
-export async function handleCallback(req: Request, res: Response): Promise<void> {
+export async function handleCallback(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const query = parseOrThrow(callbackQuerySchema, req.query);
   let redirectPath = DEFAULT_POST_INSTALL_REDIRECT_PATH;
 
@@ -100,12 +116,17 @@ export async function handleCallback(req: Request, res: Response): Promise<void>
     const code = error instanceof ApiError ? error.code : "GITHUB_API_ERROR";
     logger.warn("github callback failed", { code });
     // Only a stable error code travels back to the browser: never a token.
-    res.redirect(buildWebRedirect(redirectPath, { github: "error", reason: code }));
+    res.redirect(
+      buildWebRedirect(redirectPath, { github: "error", reason: code }),
+    );
   }
 }
 
 /** GET /api/github/repositories */
-export async function getRepositories(req: Request, res: Response): Promise<void> {
+export async function getRepositories(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const user = getAuthenticatedUser(req);
   const query = parseQuery(listRepositoriesQuerySchema, req);
 
@@ -117,20 +138,28 @@ export async function getRepositories(req: Request, res: Response): Promise<void
     page: query.page,
     perPage: query.perPage,
     ...(query.search ? { search: query.search } : {}),
-    ...(query.selectedOnly === undefined ? {} : { selectedOnly: query.selectedOnly }),
+    ...(query.selectedOnly === undefined
+      ? {}
+      : { selectedOnly: query.selectedOnly }),
   });
   sendSuccess(res, result);
 }
 
 /** POST /api/github/repositories/sync */
-export async function syncRepositories(req: Request, res: Response): Promise<void> {
+export async function syncRepositories(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const user = getAuthenticatedUser(req);
   const count = await refreshRepositories(user.id as string);
   sendSuccess(res, { synced: count });
 }
 
 /** PATCH /api/github/repositories/access */
-export async function patchRepositoryAccess(req: Request, res: Response): Promise<void> {
+export async function patchRepositoryAccess(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const user = getAuthenticatedUser(req);
   const input = parseBody(updateRepositoryAccessSchema, req);
   sendSuccess(res, await updateRepositoryAccess(user.id as string, input));
@@ -140,18 +169,30 @@ export async function patchRepositoryAccess(req: Request, res: Response): Promis
  * POST /api/github/repositories/authorize
  * Pre-flight used by the UI before a future coding session is created.
  */
-export async function authorizeRepository(req: Request, res: Response): Promise<void> {
+export async function authorizeRepository(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const user = getAuthenticatedUser(req);
   const { repositoryId } = parseBody(sessionRepositorySchema, req);
-  sendSuccess(res, await getRepositoryForSession(user.id as string, repositoryId));
+  sendSuccess(
+    res,
+    await getRepositoryForSession(user.id as string, repositoryId),
+  );
 }
 
 /**
  * POST /api/internal/github/repositories/:githubRepositoryId/clone-credentials
  * Internal endpoint for the future sandbox/agent service. Never called by a browser.
  */
-export async function issueCloneCredentials(req: Request, res: Response): Promise<void> {
-  const { githubRepositoryId } = parseOrThrow(repositoryIdParamSchema, req.params);
+export async function issueCloneCredentials(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const { githubRepositoryId } = parseOrThrow(
+    repositoryIdParamSchema,
+    req.params,
+  );
   // The acting user comes from the single-use grant the user themselves
   // obtained, so the service token alone grants nothing.
   const { grantToken } = parseBody(cloneCredentialsBodySchema, req);
@@ -160,14 +201,20 @@ export async function issueCloneCredentials(req: Request, res: Response): Promis
 }
 
 /** DELETE /api/github */
-export async function disconnectGitHub(req: Request, res: Response): Promise<void> {
+export async function disconnectGitHub(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const user = getAuthenticatedUser(req);
   await disconnectInstallation(user.id as string);
   sendSuccess(res, { disconnected: true });
 }
 
 /** POST /api/github/webhooks */
-export async function receiveWebhook(req: Request, res: Response): Promise<void> {
+export async function receiveWebhook(
+  req: Request,
+  res: Response,
+): Promise<void> {
   const event = req.header("x-github-event");
   const deliveryId = req.header("x-github-delivery");
   if (!event || !deliveryId) {

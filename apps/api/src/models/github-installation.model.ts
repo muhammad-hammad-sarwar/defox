@@ -3,7 +3,6 @@ import {
   Schema,
   Types,
   model,
-  models,
   type HydratedDocument,
   type Model,
 } from "mongoose";
@@ -27,15 +26,25 @@ export interface GitHubInstallationAttributes {
   updatedAt: Date;
 }
 
-export type GitHubInstallationDocument = HydratedDocument<GitHubInstallationAttributes>;
+export type GitHubInstallationDocument =
+  HydratedDocument<GitHubInstallationAttributes>;
 
 const githubInstallationSchema = new Schema<GitHubInstallationAttributes>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     installationId: { type: Number, required: true, unique: true },
     githubAccountId: { type: Number, required: true, index: true },
     githubAccountLogin: { type: String, required: true },
-    githubAccountType: { type: String, enum: ["User", "Organization"], required: true },
+    githubAccountType: {
+      type: String,
+      enum: ["User", "Organization"],
+      required: true,
+    },
     githubAccountAvatarUrl: { type: String, default: null },
     githubRepositorySelection: {
       type: String,
@@ -63,5 +72,7 @@ const githubInstallationSchema = new Schema<GitHubInstallationAttributes>(
 githubInstallationSchema.index({ userId: 1, status: 1 });
 
 export const GitHubInstallationModel: Model<GitHubInstallationAttributes> =
-  (models.GitHubInstallation as Model<GitHubInstallationAttributes> | undefined) ??
-  model<GitHubInstallationAttributes>("GitHubInstallation", githubInstallationSchema);
+  model<GitHubInstallationAttributes>(
+    "GitHubInstallation",
+    githubInstallationSchema,
+  );

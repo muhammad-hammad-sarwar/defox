@@ -2,7 +2,6 @@ import {
   Schema,
   Types,
   model,
-  models,
   type HydratedDocument,
   type Model,
 } from "mongoose";
@@ -34,7 +33,8 @@ export interface GitHubRepositoryAttributes {
   updatedAt: Date;
 }
 
-export type GitHubRepositoryDocument = HydratedDocument<GitHubRepositoryAttributes>;
+export type GitHubRepositoryDocument =
+  HydratedDocument<GitHubRepositoryAttributes>;
 
 const permissionsSchema = new Schema<GitHubRepositoryPermissionsAttributes>(
   {
@@ -65,10 +65,12 @@ const githubRepositorySchema = new Schema<GitHubRepositoryAttributes>(
 );
 
 // A repository is unique within the context of an installation.
-githubRepositorySchema.index({ installationId: 1, githubRepositoryId: 1 }, { unique: true });
+githubRepositorySchema.index(
+  { installationId: 1, githubRepositoryId: 1 },
+  { unique: true },
+);
 githubRepositorySchema.index({ userId: 1, githubRepositoryId: 1 });
 githubRepositorySchema.index({ userId: 1, installationId: 1, fullName: 1 });
 
 export const GitHubRepositoryModel: Model<GitHubRepositoryAttributes> =
-  (models.GitHubRepository as Model<GitHubRepositoryAttributes> | undefined) ??
   model<GitHubRepositoryAttributes>("GitHubRepository", githubRepositorySchema);

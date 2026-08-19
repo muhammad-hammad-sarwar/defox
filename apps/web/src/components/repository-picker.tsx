@@ -4,7 +4,11 @@ import type { GitHubRepositoryDto, RepositorySelection } from "@defox/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiRequestError } from "@/lib/api-client";
-import { listRepositories, messageForCode, updateRepositoryAccess } from "@/lib/github";
+import {
+  listRepositories,
+  messageForCode,
+  updateRepositoryAccess,
+} from "@/lib/github";
 import { Alert, Badge, Button, Card, Spinner } from "./ui";
 
 const PER_PAGE = 30;
@@ -30,6 +34,39 @@ export function RepositoryPicker({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+
+  const selectedOnPage = repositories.filter((repository) =>
+    selected.has(repository.githubRepositoryId),
+  ).length;
+
+  function deselectAllOnPage() {
+    setSelected((current) => {
+      const next = new Set(current);
+
+      for (const repository of repositories) {
+        next.delete(repository.githubRepositoryId);
+
+        pendingSelect.current.delete(repository.githubRepositoryId);
+        pendingDeselect.current.add(repository.githubRepositoryId);
+      }
+
+      return next;
+    });
+
+    setDirty(true);
+  }
+
+  const allCurrentPageSelected =
+    repositories.length > 0 && selectedOnPage === repositories.length;
+
+  const someCurrentPageSelected = selectedOnPage > 0 && !allCurrentPageSelected;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = someCurrentPageSelected;
+    }
+  }, [someCurrentPageSelected]);
 
   const load = useCallback(
     async (options: { refresh?: boolean } = {}) => {
@@ -70,6 +107,23 @@ export function RepositoryPicker({
     [page, search],
   );
 
+  function selectAllOnPage() {
+    setSelected((current) => {
+      const next = new Set(current);
+
+      for (const repository of repositories) {
+        next.add(repository.githubRepositoryId);
+
+        pendingSelect.current.add(repository.githubRepositoryId);
+        pendingDeselect.current.delete(repository.githubRepositoryId);
+      }
+
+      return next;
+    });
+
+    setDirty(true);
+  }
+
   useEffect(() => {
     void load();
   }, [load]);
@@ -104,7 +158,9 @@ export function RepositoryPicker({
       pendingSelect.current.clear();
       pendingDeselect.current.clear();
       setDirty(false);
-      onSaved(`Saved ${result.selectedRepositoryIds.length} selected repositories.`);
+      onSaved(
+        `Saved ${result.selectedRepositoryIds?.length} selected repositories.`,
+      );
     } catch (cause) {
       setError(
         cause instanceof ApiRequestError
@@ -126,9 +182,14 @@ export function RepositoryPicker({
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => void load({ refresh: true })} disabled={loading}>
+          <Button
+            variant="ghost"
+            onClick={() => void load({ refresh: true })}
+            disabled={loading}
+          >
             Refresh from GitHub
           </Button>
+
           {mode === "selected" && (
             <Button
               onClick={() => void save()}
@@ -158,12 +219,43 @@ export function RepositoryPicker({
 
       {mode === "all" && (
         <p className="mt-3 text-xs text-accent-300">
-          All repositories are enabled. Switch to “Only selected repositories” to choose
-          individually.
+          All repositories are enabled. Switch to “Only selected repositories”
+          to choose individually.
         </p>
       )}
 
       <div className="mt-4">
+        {/* Select and Deselect All */}
+        <div className="mb-2 flex items-center gap-3 border-b border-surface-border px-1 pb-2">
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            checked={allCurrentPageSelected}
+            onChange={() => {
+              if (allCurrentPageSelected) {
+                deselectAllOnPage();
+              } else {
+                selectAllOnPage();
+              }
+            }}
+            disabled={loading || saving || repositories.length === 0}
+            className="h-4 w-4 cursor-pointer rounded border-surface-border bg-surface accent-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+
+          <span
+            className="cursor-pointer text-xs font-medium text-slate-400 hover:text-slate-200"
+            onClick={() => {
+              if (allCurrentPageSelected) {
+                deselectAllOnPage();
+              } else {
+                selectAllOnPage();
+              }
+            }}
+          >
+            {allCurrentPageSelected ? "Deselect all" : "Select all"}
+          </span>
+        </div>
+
         {loading ? (
           <Spinner label="Loading repositories" />
         ) : repositories.length === 0 ? (
@@ -175,12 +267,18 @@ export function RepositoryPicker({
         ) : (
           <ul className="divide-y divide-surface-border">
             {repositories.map((repository) => (
-              <li key={repository.githubRepositoryId} className="flex items-center gap-3 py-2">
+              <li
+                key={repository.githubRepositoryId}
+                className="flex items-center gap-3 py-2"
+              >
                 <input
                   type="checkbox"
-                  className="accent-emerald-500"
+                  className="h-4 w-4 cursor-pointer rounded border-surface-border bg-surface accent-primary-500 disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={mode === "all"}
-                  checked={mode === "all" || selected.has(repository.githubRepositoryId)}
+                  checked={
+                    mode === "all" ||
+                    selected.has(repository.githubRepositoryId)
+                  }
                   onChange={() => toggle(repository.githubRepositoryId)}
                 />
                 <span className="flex-1 truncate text-sm text-slate-200">
