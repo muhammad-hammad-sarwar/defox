@@ -1,4 +1,4 @@
-import { Schema, model, models, type HydratedDocument, type Model } from "mongoose";
+import { Schema, model, type HydratedDocument, type Model } from "mongoose";
 
 /**
  * Safe metadata about received webhook deliveries. Payload bodies are not
@@ -17,7 +17,8 @@ export interface GitHubWebhookEventAttributes {
   updatedAt: Date;
 }
 
-export type GitHubWebhookEventDocument = HydratedDocument<GitHubWebhookEventAttributes>;
+export type GitHubWebhookEventDocument =
+  HydratedDocument<GitHubWebhookEventAttributes>;
 
 const githubWebhookEventSchema = new Schema<GitHubWebhookEventAttributes>(
   {
@@ -33,5 +34,7 @@ const githubWebhookEventSchema = new Schema<GitHubWebhookEventAttributes>(
 );
 
 export const GitHubWebhookEventModel: Model<GitHubWebhookEventAttributes> =
-  (models.GitHubWebhookEvent as Model<GitHubWebhookEventAttributes> | undefined) ??
-  model<GitHubWebhookEventAttributes>("GitHubWebhookEvent", githubWebhookEventSchema);
+  model<GitHubWebhookEventAttributes>(
+    "GitHubWebhookEvent",
+    githubWebhookEventSchema,
+  );

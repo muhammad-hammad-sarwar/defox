@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { ApiRequestError } from "@/lib/api-client";
-import { authorizeRepository, listRepositories, messageForCode } from "@/lib/github";
+import {
+  authorizeRepository,
+  listRepositories,
+  messageForCode,
+} from "@/lib/github";
 import { Alert, Badge, Button, Card, Spinner } from "./ui";
 
 export function RepositoryList() {
@@ -29,7 +33,10 @@ export function RepositoryList() {
       setRepositories(result.items);
       setNotConnected(false);
     } catch (cause) {
-      if (cause instanceof ApiRequestError && cause.code === "GITHUB_NOT_CONNECTED") {
+      if (
+        cause instanceof ApiRequestError &&
+        cause.code === "GITHUB_NOT_CONNECTED"
+      ) {
         setNotConnected(true);
       } else {
         setError(
@@ -76,7 +83,8 @@ export function RepositoryList() {
       <header>
         <h1 className="text-xl font-semibold text-slate-100">Repositories</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Repositories enabled for Cloud Agent through your GitHub App installation.
+          Repositories enabled for Defox Cloud through your GitHub App
+          installation.
         </p>
       </header>
 
@@ -108,7 +116,10 @@ export function RepositoryList() {
             <Card>
               <p className="text-sm text-slate-500">
                 No repositories are enabled yet. Choose them in{" "}
-                <Link href="/settings/github" className="text-accent-400 hover:text-accent-300">
+                <Link
+                  href="/settings/github"
+                  className="text-accent-400 hover:text-accent-300"
+                >
                   GitHub settings
                 </Link>
                 .

@@ -11,7 +11,12 @@ export class ApiError extends Error {
   readonly code: ApiErrorCode;
   readonly details?: unknown;
 
-  constructor(status: number, code: ApiErrorCode, message: string, details?: unknown) {
+  constructor(
+    status: number,
+    code: ApiErrorCode,
+    message: string,
+    details?: unknown,
+  ) {
     super(redactString(message));
     this.name = "ApiError";
     this.status = status;
@@ -23,7 +28,10 @@ export class ApiError extends Error {
     return new ApiError(400, "BAD_REQUEST", message, details);
   }
 
-  static validation(message = "Invalid request payload", details?: unknown): ApiError {
+  static validation(
+    message = "Invalid request payload",
+    details?: unknown,
+  ): ApiError {
     return new ApiError(422, "VALIDATION_ERROR", message, details);
   }
 

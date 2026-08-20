@@ -19,7 +19,9 @@ export function GitHubSettings() {
   const callbackStatus = searchParams.get("github");
   const callbackReason = searchParams.get("reason");
 
-  const [connection, setConnection] = useState<GitHubConnectionDto | null>(null);
+  const [connection, setConnection] = useState<GitHubConnectionDto | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -31,6 +33,7 @@ export function GitHubSettings() {
     setError(null);
     try {
       const data = await getConnection();
+      console.log(data);
       setConnection(data);
       setMode(data.repositorySelection ?? "all");
     } catch (cause) {
@@ -57,12 +60,12 @@ export function GitHubSettings() {
     try {
       if (next === "all") {
         await updateRepositoryAccess({ mode: "all" });
-        setNotice("All repositories are now available to Cloud Agent.");
+        setNotice("All repositories are now available to Defox Cloud.");
       } else {
         // Switching to "selected" keeps the current per-repository choices;
         // the picker below writes the final list.
         await updateRepositoryAccess({ mode: "selected" });
-        setNotice("Choose the repositories Cloud Agent may use.");
+        setNotice("Choose the repositories Defox Cloud may use.");
       }
       await load();
     } catch (cause) {
@@ -78,7 +81,10 @@ export function GitHubSettings() {
   }
 
   async function onDisconnect() {
-    if (!window.confirm("Disconnect GitHub? Repository metadata will be removed.")) return;
+    if (
+      !window.confirm("Disconnect GitHub? Repository metadata will be removed.")
+    )
+      return;
     setSaving(true);
     try {
       await disconnectGitHub();
@@ -100,8 +106,8 @@ export function GitHubSettings() {
       <header>
         <h1 className="text-xl font-semibold text-slate-100">GitHub</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Cloud Agent uses a GitHub App. Credentials stay on the backend and are generated on
-          demand.
+          Defox Cloud uses a GitHub App. Credentials stay on the backend and are
+          generated on demand.
         </p>
       </header>
 
@@ -110,13 +116,16 @@ export function GitHubSettings() {
       )}
       {callbackStatus === "pending" && (
         <Alert tone="info">
-          Installation requested. An organization owner has to approve it before repositories
-          appear here.
+          Installation requested. An organization owner has to approve it before
+          repositories appear here.
         </Alert>
       )}
       {callbackStatus === "error" && (
         <Alert tone="error">
-          {messageForCode(callbackReason ?? "", "GitHub connection failed. Please try again.")}
+          {messageForCode(
+            callbackReason ?? "",
+            "GitHub connection failed. Please try again.",
+          )}
         </Alert>
       )}
       {error && <Alert tone="error">{error}</Alert>}
@@ -131,8 +140,8 @@ export function GitHubSettings() {
             <span className="text-sm text-slate-300">Not connected</span>
           </div>
           <p className="mt-2 text-sm text-slate-400">
-            Install the GitHub App to pick an account or organization and the repositories Cloud
-            Agent may access.
+            Install the GitHub App to pick an account or organization and the
+            repositories Defox Cloud may access.
           </p>
           <a
             className="mt-4 inline-flex rounded-md bg-primary-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-primary-500"
@@ -173,7 +182,11 @@ export function GitHubSettings() {
                 >
                   Reconnect GitHub
                 </a>
-                <Button variant="danger" onClick={onDisconnect} disabled={saving}>
+                <Button
+                  variant="danger"
+                  onClick={onDisconnect}
+                  disabled={saving}
+                >
                   Disconnect
                 </Button>
               </div>
@@ -181,13 +194,15 @@ export function GitHubSettings() {
           </Card>
 
           <Card>
-            <h2 className="text-sm font-medium text-slate-200">Repository access</h2>
+            <h2 className="text-sm font-medium text-slate-200">
+              Repository access
+            </h2>
             <p className="mt-1 text-xs text-slate-500">
               GitHub grants this installation{" "}
               {connection.installation.githubRepositorySelection === "all"
                 ? "every repository"
                 : "a selected set of repositories"}
-              . Choose how much of that Cloud Agent may use.
+              . Choose how much of that Defox Cloud may use.
             </p>
 
             <div className="mt-4 space-y-2">
@@ -205,7 +220,9 @@ export function GitHubSettings() {
                     onChange={() => void changeMode(option)}
                   />
                   <span>
-                    {option === "all" ? "All repositories" : "Only selected repositories"}
+                    {option === "all"
+                      ? "All repositories"
+                      : "Only selected repositories"}
                   </span>
                 </label>
               ))}

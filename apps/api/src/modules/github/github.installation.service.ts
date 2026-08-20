@@ -40,7 +40,9 @@ export async function createInstallationUrl(
     expiresAt: new Date(Date.now() + OAUTH_STATE_TTL_MINUTES * 60 * 1000),
   });
 
-  const url = new URL(`${GITHUB_BASE_URL}/apps/${env.GITHUB_APP_SLUG}/installations/new`);
+  const url = new URL(
+    `${GITHUB_BASE_URL}/apps/${env.GITHUB_APP_SLUG}/installations/new`,
+  );
   url.searchParams.set("state", state);
   return url.toString();
 }
@@ -51,7 +53,9 @@ export interface ConsumedState {
 }
 
 /** Validates and burns an installation state. Replays are rejected. */
-export async function consumeInstallationState(state: string): Promise<ConsumedState> {
+export async function consumeInstallationState(
+  state: string,
+): Promise<ConsumedState> {
   const record = await GitHubOAuthStateModel.findOneAndUpdate(
     { state, consumedAt: null, expiresAt: { $gt: new Date() } },
     { $set: { consumedAt: new Date() } },
@@ -66,7 +70,10 @@ export async function consumeInstallationState(state: string): Promise<ConsumedS
     );
   }
 
-  return { userId: record.userId.toString(), redirectPath: record.redirectPath };
+  return {
+    userId: record.userId.toString(),
+    redirectPath: record.redirectPath,
+  };
 }
 
 export interface HandleCallbackInput {
@@ -89,7 +96,10 @@ export async function handleInstallationCallback(
     // Extra defence: confirm the GitHub user who authorized the flow actually
     // has access to the installation id supplied in the callback.
     const userOctokit = await getOctokitForOAuthCode(input.code);
-    const allowed = await userCanAccessInstallation(userOctokit, input.installationId);
+    const allowed = await userCanAccessInstallation(
+      userOctokit,
+      input.installationId,
+    );
     if (!allowed) {
       throw new ApiError(
         403,
@@ -98,7 +108,6 @@ export async function handleInstallationCallback(
       );
     }
   }
-
   const existing = await GitHubInstallationModel.findOne({
     installationId: installation.installationId,
   });
@@ -110,7 +119,6 @@ export async function handleInstallationCallback(
       "This GitHub installation is already connected to another account",
     );
   }
-
   const document = await GitHubInstallationModel.findOneAndUpdate(
     { installationId: installation.installationId },
     {
@@ -170,7 +178,9 @@ export async function requireActiveInstallation(
   return installation;
 }
 
-function toAccountDto(installation: GitHubInstallationDocument): GitHubAccountDto {
+function toAccountDto(
+  installation: GitHubInstallationDocument,
+): GitHubAccountDto {
   return {
     id: installation.githubAccountId,
     login: installation.githubAccountLogin,
@@ -179,7 +189,9 @@ function toAccountDto(installation: GitHubInstallationDocument): GitHubAccountDt
   };
 }
 
-export async function getConnection(userId: string): Promise<GitHubConnectionDto> {
+export async function getConnection(
+  userId: string,
+): Promise<GitHubConnectionDto> {
   const env = getEnv();
   const installation = await findActiveInstallation(userId);
 
@@ -238,11 +250,16 @@ export async function markInstallationStatus(
   status: "active" | "suspended" | "removed",
 ): Promise<void> {
   invalidateInstallationToken(installationId);
-  await GitHubInstallationModel.updateOne({ installationId }, { $set: { status } });
+  await GitHubInstallationModel.updateOne(
+    { installationId },
+    { $set: { status } },
+  );
 }
 
 /** Builds the GitHub page where a user manages which repositories are shared. */
-export function buildManageInstallationUrl(installation: GitHubInstallationDocument): string {
+export function buildManageInstallationUrl(
+  installation: GitHubInstallationDocument,
+): string {
   return installation.githubAccountType === "Organization"
     ? `${GITHUB_BASE_URL}/organizations/${installation.githubAccountLogin}/settings/installations/${installation.installationId}`
     : `${GITHUB_BASE_URL}/settings/installations/${installation.installationId}`;

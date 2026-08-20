@@ -10,9 +10,9 @@ export default async function AppLayout({
   if (!user) redirect("/login");
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen gap-4 bg-surface p-4">
       <Sidebar />
-      <main className="flex-1 px-8 py-8">
+      <main className="min-w-0 flex-1 overflow-y-auto rounded-xl border border-surface-border bg-surface-raised px-8 py-8 scrollbar-thin">
         <div className="mx-auto max-w-4xl">{children}</div>
       </main>
     </div>

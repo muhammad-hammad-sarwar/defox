@@ -4,7 +4,10 @@ import type { NextFunction, Request, Response } from "express";
 
 import { getEnv } from "../config/env.js";
 import { ApiError } from "../lib/api-error.js";
-import { findUserById, verifySessionToken } from "../modules/auth/auth.service.js";
+import {
+  findUserById,
+  verifySessionToken,
+} from "../modules/auth/auth.service.js";
 import type { UserDocument } from "../models/user.model.js";
 
 declare module "express-serve-static-core" {

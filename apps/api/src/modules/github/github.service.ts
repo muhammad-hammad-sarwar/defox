@@ -5,9 +5,7 @@ import { Octokit } from "@octokit/rest";
 import { getEnv } from "../../config/env.js";
 import { ApiError } from "../../lib/api-error.js";
 import { logger } from "../../lib/logger.js";
-import {
-  INSTALLATION_TOKEN_REFRESH_MARGIN_SECONDS,
-} from "./github.constants.js";
+import { INSTALLATION_TOKEN_REFRESH_MARGIN_SECONDS } from "./github.constants.js";
 import type {
   InstallationToken,
   NormalizedInstallation,
@@ -90,7 +88,9 @@ export function invalidateInstallationToken(installationId: number): void {
 }
 
 /** Octokit authenticated as a specific installation. */
-export async function getInstallationOctokit(installationId: number): Promise<Octokit> {
+export async function getInstallationOctokit(
+  installationId: number,
+): Promise<Octokit> {
   const { token } = await getInstallationAccessToken(installationId);
   return new Octokit({ auth: token });
 }
@@ -98,7 +98,9 @@ export async function getInstallationOctokit(installationId: number): Promise<Oc
 /** Exchanges the OAuth `code` returned during installation for a user token. */
 export async function getOctokitForOAuthCode(code: string): Promise<Octokit> {
   try {
-    const auth = (await getAppAuth()({ type: "oauth-user", code })) as { token: string };
+    const auth = (await getAppAuth()({ type: "oauth-user", code })) as {
+      token: string;
+    };
     return new Octokit({ auth: auth.token });
   } catch (error) {
     throw toApiError(error);
@@ -109,9 +111,12 @@ export async function fetchInstallation(
   installationId: number,
 ): Promise<NormalizedInstallation> {
   try {
-    const { data } = await getAppOctokit().request("GET /app/installations/{installation_id}", {
-      installation_id: installationId,
-    });
+    const { data } = await getAppOctokit().request(
+      "GET /app/installations/{installation_id}",
+      {
+        installation_id: installationId,
+      },
+    );
     return normalizeInstallation(data);
   } catch (error) {
     throw toApiError(error, installationId);
@@ -144,7 +149,10 @@ export async function userCanAccessInstallation(
       userOctokit.rest.apps.listInstallationsForAuthenticatedUser,
       { per_page: 100 },
     );
-    return installations.some((installation) => installation.id === installationId);
+
+    return installations.some(
+      (installation) => installation.id === installationId,
+    );
   } catch (error) {
     throw toApiError(error, installationId);
   }
@@ -157,9 +165,17 @@ type RawInstallation = {
   suspended_at?: string | null;
 };
 
-export function normalizeInstallation(raw: RawInstallation): NormalizedInstallation {
+export function normalizeInstallation(
+  raw: RawInstallation,
+): NormalizedInstallation {
   const account = raw.account as
-    | { id?: number; login?: string; slug?: string; type?: string; avatar_url?: string }
+    | {
+        id?: number;
+        login?: string;
+        slug?: string;
+        type?: string;
+        avatar_url?: string;
+      }
     | null
     | undefined;
 
@@ -178,7 +194,8 @@ export function normalizeInstallation(raw: RawInstallation): NormalizedInstallat
     accountLogin: login,
     accountType: account.type === "Organization" ? "Organization" : "User",
     accountAvatarUrl: account.avatar_url ?? null,
-    githubRepositorySelection: raw.repository_selection === "all" ? "all" : "selected",
+    githubRepositorySelection:
+      raw.repository_selection === "all" ? "all" : "selected",
     suspended: Boolean(raw.suspended_at),
   };
 }
@@ -223,12 +240,18 @@ export function toApiError(error: unknown, installationId?: number): ApiError {
   if (error instanceof ApiError) return error;
 
   if (error instanceof RequestError) {
-    const rateLimitRemaining = error.response?.headers?.["x-ratelimit-remaining"];
+    const rateLimitRemaining =
+      error.response?.headers?.["x-ratelimit-remaining"];
     if (error.status === 403 && rateLimitRemaining === "0") {
-      return new ApiError(429, "GITHUB_RATE_LIMITED", "GitHub API rate limit exceeded");
+      return new ApiError(
+        429,
+        "GITHUB_RATE_LIMITED",
+        "GitHub API rate limit exceeded",
+      );
     }
     if (error.status === 401) {
-      if (installationId !== undefined) invalidateInstallationToken(installationId);
+      if (installationId !== undefined)
+        invalidateInstallationToken(installationId);
       return new ApiError(
         502,
         "GITHUB_TOKEN_EXPIRED",
@@ -243,7 +266,8 @@ export function toApiError(error: unknown, installationId?: number): ApiError {
       );
     }
     if (error.status === 404) {
-      if (installationId !== undefined) invalidateInstallationToken(installationId);
+      if (installationId !== undefined)
+        invalidateInstallationToken(installationId);
       return new ApiError(
         404,
         "GITHUB_INSTALLATION_REMOVED",

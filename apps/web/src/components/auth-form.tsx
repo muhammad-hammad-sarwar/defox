@@ -2,7 +2,7 @@
 
 import type { AuthUserDto } from "@defox/shared";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 
 import { ApiRequestError, apiFetch } from "@/lib/api-client";
 import { Alert, Button, Card } from "./ui";
@@ -18,7 +18,7 @@ export function AuthForm() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function onSubmit(event: FormEvent) {
+  async function onSubmit(event: React.SubmitEvent) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
@@ -33,7 +33,9 @@ export function AuthForm() {
       router.refresh();
     } catch (cause) {
       setError(
-        cause instanceof ApiRequestError ? cause.message : "Could not sign you in right now.",
+        cause instanceof ApiRequestError
+          ? cause.message
+          : "Could not sign you in right now.",
       );
     } finally {
       setSubmitting(false);
@@ -45,9 +47,11 @@ export function AuthForm() {
 
   return (
     <Card className="w-full max-w-sm">
-      <h1 className="text-lg font-semibold text-slate-100">Cloud Agent</h1>
+      <h1 className="text-lg font-semibold text-slate-100">Defox Cloud</h1>
       <p className="mt-1 text-sm text-slate-400">
-        {mode === "login" ? "Sign in to continue." : "Create an account to get started."}
+        {mode === "login"
+          ? "Sign in to continue."
+          : "Create an account to get started."}
       </p>
 
       <form className="mt-5 space-y-3" onSubmit={onSubmit}>
@@ -81,7 +85,11 @@ export function AuthForm() {
         {error && <Alert tone="error">{error}</Alert>}
 
         <Button type="submit" className="w-full" disabled={submitting}>
-          {submitting ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
+          {submitting
+            ? "Please wait…"
+            : mode === "login"
+              ? "Sign in"
+              : "Create account"}
         </Button>
       </form>
 

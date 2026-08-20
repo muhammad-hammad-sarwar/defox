@@ -2,7 +2,6 @@ import {
   Schema,
   Types,
   model,
-  models,
   type HydratedDocument,
   type Model,
 } from "mongoose";
@@ -24,11 +23,17 @@ export interface GitHubCloneGrantAttributes {
   updatedAt: Date;
 }
 
-export type GitHubCloneGrantDocument = HydratedDocument<GitHubCloneGrantAttributes>;
+export type GitHubCloneGrantDocument =
+  HydratedDocument<GitHubCloneGrantAttributes>;
 
 const githubCloneGrantSchema = new Schema<GitHubCloneGrantAttributes>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     githubRepositoryId: { type: String, required: true },
     installationId: { type: Number, required: true },
     tokenHash: { type: String, required: true, unique: true },
@@ -41,5 +46,4 @@ const githubCloneGrantSchema = new Schema<GitHubCloneGrantAttributes>(
 githubCloneGrantSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const GitHubCloneGrantModel: Model<GitHubCloneGrantAttributes> =
-  (models.GitHubCloneGrant as Model<GitHubCloneGrantAttributes> | undefined) ??
   model<GitHubCloneGrantAttributes>("GitHubCloneGrant", githubCloneGrantSchema);
