@@ -1,3 +1,5 @@
+import type { SessionResponse as SharedSessionResponse } from "@defox/shared";
+
 import type { CloneResult, SandboxInfo } from "../sandbox/sandbox.types.js";
 
 export type SessionStatus = "creating" | "ready" | "failed" | "stopped";
@@ -15,14 +17,9 @@ export interface CreateSessionInput {
   title?: string;
 }
 
-export interface SessionResponse {
-  id: string;
-  title: string;
-  repositories: SessionRepository[];
+export interface SessionResponse extends SharedSessionResponse {
   sandbox: SandboxInfo;
-  status: SessionStatus;
-  createdAt: string;
-  updatedAt: string;
+  revision?: number;
 }
 
 export type { CloneResult };

@@ -345,7 +345,6 @@ export async function redeemCloneGrant(
     { $set: { consumedAt: new Date() } },
   );
 
-  // logger.info("FROM REDEEM GRANT", grant);
 
   if (!grant) {
     throw new ApiError(
@@ -386,12 +385,6 @@ export async function getRepositoryCloneCredentials(
     installation.installationId,
   );
 
-  // logger.info("issued clone credentials", {
-  //   userId,
-  //   installationId: installation.installationId,
-  //   repository: repository.fullName,
-  //   expiresAt: expiresAt.toISOString(),
-  // });
 
   return {
     repository: {

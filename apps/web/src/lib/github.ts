@@ -9,14 +9,9 @@ import type {
 } from "@defox/shared";
 
 import { apiFetch } from "./api-client";
-import axios from "axios";
 
-export async function getConnection(): Promise<GitHubConnectionDto> {
-  const response = await axios.get("http://localhost:4000/api/github", {
-    withCredentials: true,
-  });
-
-  return response.data?.data;
+export function getConnection(): Promise<GitHubConnectionDto> {
+  return apiFetch<GitHubConnectionDto>("/api/github");
 }
 
 export async function listRepositories(params: {
@@ -34,39 +29,29 @@ export async function listRepositories(params: {
     query.set("selectedOnly", String(params.selectedOnly));
   if (params.refresh) query.set("refresh", "true");
 
-  const response = await axios.get(
-    `http://localhost:4000/api/github/repositories?${query}`,
-    {
-      withCredentials: true,
-    },
+  return apiFetch<Paginated<GitHubRepositoryDto>>(
+    `/api/github/repositories?${query.toString()}`,
   );
-
-  return response.data?.data;
 }
 
-export async function updateRepositoryAccess(
+export function updateRepositoryAccess(
   input: UpdateRepositoryAccessRequest,
 ): Promise<UpdateRepositoryAccessResponse> {
-  const response = await axios.patch(
-    "http://localhost:4000/api/github/repositories/access",
-    input,
-    { withCredentials: true },
+  return apiFetch<UpdateRepositoryAccessResponse>(
+    "/api/github/repositories/access",
+    { method: "PATCH", body: JSON.stringify(input) },
   );
-
-  return response.data?.data;
 }
 
 export function disconnectGitHub(): Promise<{ disconnected: boolean }> {
-  return axios.delete("http://localhost:4000/api/github", {
-    withCredentials: true,
-  });
+  return apiFetch<{ disconnected: boolean }>("/api/github", { method: "DELETE" });
 }
 
 export function authorizeRepository(
   repositoryId: string,
 ): Promise<SessionRepositoryAuthorization> {
   return apiFetch<SessionRepositoryAuthorization>(
-    "http://localhost:4000/api/github/repositories/authorize",
+    "/api/github/repositories/authorize",
     {
       method: "POST",
       body: JSON.stringify({ repositoryId }),

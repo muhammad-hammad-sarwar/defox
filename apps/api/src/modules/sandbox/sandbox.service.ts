@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { Sandbox } from "@e2b/code-interpreter";
 
 import { getEnv } from "../../config/env.js";
@@ -7,24 +9,52 @@ import {
   SANDBOX_TIMEOUT_MS,
   WORKSPACE_DIRECTORY,
 } from "./sandbox.constants.js";
+import { buildSandboxArgvCommand } from "./argv.js";
 import type {
   CloneResult,
   SandboxCommandResult,
   SandboxInfo,
 } from "./sandbox.types.js";
 
+type SandboxForClone = Pick<Sandbox, "commands" | "files" | "sandboxId">;
+
 function safeDirectoryName(repositoryName: string): string {
-  const name = repositoryName
-    .split("/")
-    .at(-1)
-    ?.replace(/[^a-zA-Z0-9._-]/g, "-")
-    .replace(/^\.+/, "")
+  const segments = repositoryName.split("/");
+  if (
+    segments.length !== 2 ||
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    throw ApiError.badRequest("Repository has an invalid full name");
+  }
+
+  const canonicalName = segments
+    .map((segment) => segment.replace(/[^a-zA-Z0-9._-]/g, "-").replace(/^\.+/, ""))
+    .join("--")
     .slice(0, 100);
-  if (!name || name === "." || name === "..") {
+  const suffix = createHash("sha256").update(repositoryName).digest("hex").slice(0, 12);
+  if (!canonicalName || canonicalName === "." || canonicalName === "..") {
     throw ApiError.badRequest("Repository has an invalid directory name");
   }
-  return name;
+  return `${canonicalName}-${suffix}`;
 }
+
+function askpassPath(repositoryName: string): string {
+  const suffix = createHash("sha256").update(repositoryName).digest("hex").slice(0, 24);
+  return `${WORKSPACE_DIRECTORY}/.defox-git-askpass-${suffix}`;
+}
+
+/**
+ * Git invokes this script only for the HTTPS username/password prompts. The
+ * credentials remain invocation-scoped environment values and are never put in
+ * a command string, git remote URL, or sandbox file.
+ */
+const GIT_ASKPASS_SCRIPT = `#!/bin/sh
+case "$1" in
+  *Username*) printf '%s\\n' "$DEFOX_GIT_ASKPASS_USERNAME" ;;
+  *Password*) printf '%s\\n' "$DEFOX_GIT_ASKPASS_PASSWORD" ;;
+  *) exit 1 ;;
+esac
+`;
 
 function commandResult(result: {
   stdout: string;
@@ -38,9 +68,7 @@ function commandResult(result: {
   };
 }
 
-export async function createSandbox(): Promise<
-  SandboxInfo & { sandbox: Sandbox }
-> {
+export async function createSandbox(): Promise<SandboxInfo & { sandbox: Sandbox }> {
   try {
     const sandbox = await Sandbox.create({
       apiKey: getEnv().E2B_API_KEY,
@@ -62,14 +90,13 @@ export async function healthCheck(
   sandbox: Sandbox,
 ): Promise<SandboxCommandResult> {
   try {
-    const result = await sandbox.commands.run("pwd && echo sandbox-ready", {
-      cwd: "/",
-    });
+    const result = await sandbox.commands.run(
+      buildSandboxArgvCommand({ executable: "pwd" }),
+      { cwd: "/" },
+    );
     const mapped = commandResult(result);
     if (mapped.exitCode !== 0) throw new Error("sandbox health check failed");
-    logger.info("sandbox health check passed", {
-      sandboxId: sandbox.sandboxId,
-    });
+    logger.info("sandbox health check passed", { sandboxId: sandbox.sandboxId });
     return mapped;
   } catch {
     throw new ApiError(
@@ -81,37 +108,46 @@ export async function healthCheck(
 }
 
 export async function cloneRepository(
-  sandbox: Sandbox,
+  sandbox: SandboxForClone,
   repository: { fullName: string; cloneUrl: string; defaultBranch: string },
   credentials: { token: string; tokenUsername: string },
 ): Promise<CloneResult> {
   const directory = `${WORKSPACE_DIRECTORY}/${safeDirectoryName(repository.fullName)}`;
-
-  const command = [
-    "mkdir -p workspace",
-    "cd workspace",
-    `git clone ${repository?.cloneUrl}`,
-  ].join("\n");
+  const askpass = askpassPath(repository.fullName);
 
   logger.info("cloning repository started", {
     sandboxId: sandbox.sandboxId,
     repository: repository.fullName,
-    directory,
   });
 
   try {
-    logger.info("CREDENTIALS", credentials.tokenUsername);
-    const result = await sandbox.commands.run(command, {
-      envs: {
-        GIT_USERNAME: credentials.tokenUsername,
-        GIT_PASSWORD: credentials.token,
-        GIT_CLONE_URL: repository.cloneUrl,
-        GIT_TARGET: directory,
-        GIT_BRANCH: repository.defaultBranch,
-      },
-    });
-    const mapped = commandResult(result);
+    await sandbox.files.makeDir(WORKSPACE_DIRECTORY);
+    await sandbox.files.write(askpass, GIT_ASKPASS_SCRIPT);
+    const chmodResult = await sandbox.commands.run(
+      buildSandboxArgvCommand({ executable: "chmod", args: ["700", askpass] }),
+      { cwd: WORKSPACE_DIRECTORY },
+    );
+    if (chmodResult.exitCode !== 0) {
+      throw new Error("could not secure temporary git askpass helper");
+    }
 
+    const result = await sandbox.commands.run(
+      buildSandboxArgvCommand({
+        executable: "git",
+        args: ["clone", "--branch", repository.defaultBranch, "--", repository.cloneUrl, directory],
+      }),
+      {
+        cwd: WORKSPACE_DIRECTORY,
+        envs: {
+          GIT_ASKPASS: askpass,
+          GIT_ASKPASS_REQUIRE: "force",
+          GIT_TERMINAL_PROMPT: "0",
+          DEFOX_GIT_ASKPASS_USERNAME: credentials.tokenUsername,
+          DEFOX_GIT_ASKPASS_PASSWORD: credentials.token,
+        },
+      },
+    );
+    const mapped = commandResult(result);
     const cloneResult = {
       repository: repository.fullName,
       directory,
@@ -119,11 +155,9 @@ export async function cloneRepository(
       ...mapped,
     };
 
-    logger.info("CLONE RESULT", cloneResult);
     logger.info("cloning repository completed", {
       sandboxId: sandbox.sandboxId,
       repository: repository.fullName,
-      directory,
       success: cloneResult.success,
     });
     return cloneResult;
@@ -142,6 +176,12 @@ export async function cloneRepository(
       stderr: "Repository clone failed",
       exitCode: 1,
     };
+  } finally {
+    try {
+      await sandbox.files.remove(askpass);
+    } catch {
+      // The sandbox may have terminated; its filesystem is already gone.
+    }
   }
 }
 

@@ -9,6 +9,11 @@ export interface SessionRepository {
   defaultBranch: string;
 }
 
+/**
+ * User-facing historical session summary. `repositories` deliberately remains
+ * an array because pre-v1 sessions can contain multiple repositories. New v1
+ * root runs use `RootRunSnapshot.repository` and always contain exactly one.
+ */
 export interface SessionResponse {
   id: string;
   title: string;
@@ -17,4 +22,6 @@ export interface SessionResponse {
   status: SessionStatus;
   createdAt: string;
   updatedAt: string;
+  /** Optimistic revision when supplied by v1-capable APIs; absent on historical records. */
+  revision?: number;
 }

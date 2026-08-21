@@ -12,7 +12,10 @@
     "dev:web": "npm run dev --workspace @defox/web",
     "build": "npm run build --workspace @defox/shared && npm run build --workspace @defox/api && npm run build --workspace @defox/web",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:integration": "npm run test:integration --workspace @defox/api",
+    "test:e2e": "npm run test:e2e --workspaces --if-present"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
