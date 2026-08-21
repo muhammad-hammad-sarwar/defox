@@ -54,13 +54,14 @@ const envSchema = z.object({
   GITHUB_PRIVATE_KEY: privateKeySchema,
   GITHUB_CALLBACK_URL: z.string().url(),
   /** Required: the webhook endpoint is public, so it must always be verifiable. */
-  // GITHUB_WEBHOOK_SECRET: z.string().min(16, "GITHUB_WEBHOOK_SECRET must be at least 16 characters"),
   GITHUB_WEBHOOK_SECRET: z.string().optional(),
+  // .min(16, "GITHUB_WEBHOOK_SECRET must be at least 16 characters"),
   /**
    * Shared secret used by the future agent/sandbox service to request
    * short-lived clone credentials. Never exposed to the browser.
    */
-  INTERNAL_SERVICE_TOKEN: z.string().min(16),
+  // INTERNAL_SERVICE_TOKEN: z.string().min(16),
+  E2B_API_KEY: z.string().min(1),
 });
 
 /**

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@defox/shared": "*",
+    "@e2b/code-interpreter": "^2.7.1",
     "@octokit/auth-app": "^7.1.4",
     "@octokit/request-error": "^6.1.7",
     "@octokit/rest": "^21.1.0",
@@ -27,12 +28,12 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.19.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jsonwebtoken": "^9.0.7",
-    "@eslint/js": "^9.19.0",
     "@types/node": "^20.17.16",
     "eslint": "^9.19.0",
     "tsx": "^4.19.2",
