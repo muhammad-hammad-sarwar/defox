@@ -39,6 +39,8 @@ export const API_ERROR_CODES = [
   "GITHUB_API_ERROR",
   "GITHUB_TOKEN_EXPIRED",
   "GITHUB_UNAUTHORIZED_REPOSITORY",
+  "SESSION_CREATION_FAILED",
+  "SESSION_NOT_FOUND",
 ] as const;
 
 export type ApiErrorCode = (typeof API_ERROR_CODES)[number];

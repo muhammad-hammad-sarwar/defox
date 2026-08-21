@@ -45,7 +45,8 @@ export function toRepositoryDto(
     htmlUrl: repository.htmlUrl,
     cloneUrl: repository.cloneUrl,
     permissions: repository.permissions,
-    selected: installation.repositorySelection === "all" ? true : repository.selected,
+    selected:
+      installation.repositorySelection === "all" ? true : repository.selected,
     updatedAt: repository.updatedAt.toISOString(),
   };
 }
@@ -57,7 +58,9 @@ export function toRepositoryDto(
 export async function syncInstallationRepositories(
   installation: GitHubInstallationDocument,
 ): Promise<number> {
-  const repositories = await fetchInstallationRepositories(installation.installationId);
+  const repositories = await fetchInstallationRepositories(
+    installation.installationId,
+  );
   // Newly granted repositories are enabled by default only while the user is
   // sharing everything; otherwise they stay opt-in.
   const selectByDefault = installation.repositorySelection === "all";
@@ -87,7 +90,9 @@ export async function syncInstallationRepositories(
   // Repositories GitHub no longer grants must disappear from the application.
   await GitHubRepositoryModel.deleteMany({
     installationId: installation.installationId,
-    githubRepositoryId: { $nin: repositories.map((repo) => repo.githubRepositoryId) },
+    githubRepositoryId: {
+      $nin: repositories.map((repo) => repo.githubRepositoryId),
+    },
   });
 
   installation.repositoriesSyncedAt = new Date();
@@ -165,7 +170,9 @@ export async function updateRepositoryAccess(
 
   const select = input.select ? [...new Set(input.select)] : [];
   const deselect = input.deselect ? [...new Set(input.deselect)] : [];
-  const replacement = input.repositoryIds ? [...new Set(input.repositoryIds)] : null;
+  const replacement = input.repositoryIds
+    ? [...new Set(input.repositoryIds)]
+    : null;
 
   await assertRepositoriesBelongToInstallation(userId, installation, [
     ...(replacement ?? []),
@@ -180,7 +187,9 @@ export async function updateRepositoryAccess(
 
   if (replacement) {
     // Full replacement: the caller states the complete selection.
-    await GitHubRepositoryModel.updateMany(scope, { $set: { selected: false } });
+    await GitHubRepositoryModel.updateMany(scope, {
+      $set: { selected: false },
+    });
     if (replacement.length > 0) {
       await GitHubRepositoryModel.updateMany(
         { ...scope, githubRepositoryId: { $in: replacement } },
@@ -203,9 +212,10 @@ export async function updateRepositoryAccess(
     }
   }
 
-  const current = await GitHubRepositoryModel.find({ ...scope, selected: true }).select(
-    "githubRepositoryId",
-  );
+  const current = await GitHubRepositoryModel.find({
+    ...scope,
+    selected: true,
+  }).select("githubRepositoryId");
   return {
     repositorySelection: "selected",
     selectedRepositoryIds: current.map((repo) => repo.githubRepositoryId),
@@ -238,7 +248,9 @@ async function assertRepositoriesBelongToInstallation(
   }
 }
 
-export async function getRepositorySelection(userId: string): Promise<RepositorySelection> {
+export async function getRepositorySelection(
+  userId: string,
+): Promise<RepositorySelection> {
   const installation = await requireActiveInstallation(userId);
   return installation.repositorySelection;
 }
@@ -333,6 +345,8 @@ export async function redeemCloneGrant(
     { $set: { consumedAt: new Date() } },
   );
 
+  // logger.info("FROM REDEEM GRANT", grant);
+
   if (!grant) {
     throw new ApiError(
       403,
@@ -341,7 +355,10 @@ export async function redeemCloneGrant(
     );
   }
 
-  return getRepositoryCloneCredentials(grant.userId.toString(), githubRepositoryId);
+  return getRepositoryCloneCredentials(
+    grant.userId.toString(),
+    githubRepositoryId,
+  );
 }
 
 /**
@@ -365,14 +382,16 @@ export async function getRepositoryCloneCredentials(
     );
   }
 
-  const { token, expiresAt } = await getInstallationAccessToken(installation.installationId);
+  const { token, expiresAt } = await getInstallationAccessToken(
+    installation.installationId,
+  );
 
-  logger.info("issued clone credentials", {
-    userId,
-    installationId: installation.installationId,
-    repository: repository.fullName,
-    expiresAt: expiresAt.toISOString(),
-  });
+  // logger.info("issued clone credentials", {
+  //   userId,
+  //   installationId: installation.installationId,
+  //   repository: repository.fullName,
+  //   expiresAt: expiresAt.toISOString(),
+  // });
 
   return {
     repository: {

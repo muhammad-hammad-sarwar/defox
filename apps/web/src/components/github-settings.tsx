@@ -33,7 +33,6 @@ export function GitHubSettings() {
     setError(null);
     try {
       const data = await getConnection();
-      console.log(data);
       setConnection(data);
       setMode(data.repositorySelection ?? "all");
     } catch (cause) {

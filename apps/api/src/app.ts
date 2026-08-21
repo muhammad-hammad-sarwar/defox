@@ -10,6 +10,7 @@ import {
   githubInternalRouter,
   githubRouter,
 } from "./modules/github/github.routes.js";
+import { sessionRouter } from "./modules/sessions/session.routes.js";
 
 export function createApp(): Express {
   const env = getEnv();
@@ -27,6 +28,7 @@ export function createApp(): Express {
   app.use("/api/auth", authRouter);
   app.use("/api/github", githubRouter);
   app.use("/api/internal/github", githubInternalRouter);
+  app.use("/api/sessions", sessionRouter);
 
   app.get("/api/health", (_req, res) => {
     sendSuccess(res, { status: "ok", uptime: process.uptime() });

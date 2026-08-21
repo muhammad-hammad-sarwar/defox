@@ -1,5 +1,4 @@
 "use client";
-
 import type { GitHubRepositoryDto } from "@defox/shared";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
