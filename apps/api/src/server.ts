@@ -1,10 +1,11 @@
 import { createApp } from "./app.js";
 import { connectDatabase } from "./config/database.js";
-import { loadEnv } from "./config/env.js";
+import { loadEnv, warnAboutWeakSecretConfiguration } from "./config/env.js";
 import { logger } from "./lib/logger.js";
 
 async function main(): Promise<void> {
   const env = loadEnv();
+  warnAboutWeakSecretConfiguration(env);
   await connectDatabase();
 
   const app = createApp();

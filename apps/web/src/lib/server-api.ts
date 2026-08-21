@@ -33,8 +33,7 @@ export async function serverApiFetch<TData>(
     }
 
     return body.data;
-  } catch (error) {
-    console.error(`serverApiFetch failed: ${apiUrl}${path}`, error);
+  } catch {
     return null;
   }
 }

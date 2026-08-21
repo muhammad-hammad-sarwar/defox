@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace @defox/shared
+      - run: npm run test:contracts --workspace @defox/shared
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run test:integration
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace @defox/shared
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e --workspace @defox/web
+
+  live-integrations:
+    if: ${{ vars.RUN_LIVE_INTEGRATION_TESTS == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: live-integrations
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run credentialed live integration tests
+        run: npm run test:integration
+        env:
+          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+          XAI_API_KEY: ${{ secrets.XAI_API_KEY }}
+          GITHUB_APP_ID: ${{ secrets.GITHUB_APP_ID }}
+          GITHUB_PRIVATE_KEY: ${{ secrets.GITHUB_PRIVATE_KEY }}

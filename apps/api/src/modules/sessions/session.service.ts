@@ -29,6 +29,7 @@ function toResponse(session: SessionDocument): SessionResponse {
     status: session.status,
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
+    revision: session.__v,
   };
 }
 
